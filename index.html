@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>360° Viewer</title>
+  <style>
+    body, html { margin:0; overflow:hidden; background:#000 }
+    canvas { width:100vw; height:100vh; display:block; cursor:crosshair }
+  </style>
+</head>
+<body>
+	<canvas id="glcanvas"></canvas>
+  <script>
+		const node_arr = 	[
+								[-0.000001, -8.000000, [1]],
+								[-0.000001, -7.611457, [0, 2]],
+								[-0.000000, -7.222920, [1, 3]],
+								[-0.000000, -6.834382, [2, 4]],
+								[-0.000000, -6.445842, [3, 5]],
+								[-0.000000, -6.057302, [4, 6]],
+								[-0.000000, -5.668764, [5, 7]],
+								[-0.000000, -5.280224, [6, 8]],
+								[-0.000000, -4.891687, [7, 9]],
+								[-0.000000, -4.503147, [8, 10]],
+								[-0.000000, -4.114606, [9, 11]],
+								[-0.000000, -3.726067, [10, 12]],
+								[-0.000000, -3.337532, [11, 13]],
+								[-0.000000, -2.948990, [12, 14]],
+								[-0.000000, -2.560449, [13, 15]],
+								[-0.000000, -2.171911, [14, 16]],
+								[-0.000000, -1.783371, [15, 17]],
+								[-0.000000, -1.394832, [16, 18]],
+								[-0.000000, -1.006293, [17, 19]],
+								[-0.000000, -0.617754, [18, 20]],
+								[-0.000000, -0.229214, [19, 21]],
+								[0.024636, 0.156898, [20, 22]],
+								[0.189906, 0.507276, [21, 23]],
+								[0.411672, 0.826103, [22, 24]],
+								[0.656569, 1.127684, [23, 25]],
+								[0.913602, 1.419033, [24, 26]],
+								[1.177748, 1.703961, [25, 27]],
+								[1.446018, 1.985017, [26, 28]],
+								[1.716394, 2.264049, [27, 29]],
+								[1.987247, 2.542622, [28, 30]],
+								[2.257021, 2.822234, [29, 31]],
+								[2.523983, 3.104529, [30, 32]],
+								[2.785833, 3.391568, [31, 33]],
+								[3.039032, 3.686245, [32, 34]],
+								[3.276863, 3.993395, [33, 35]],
+								[3.483604, 4.321981, [34, 36]],
+								[3.599627, 4.689411, [35, 37]],
+								[3.600000, 5.077944, [36, 38]],
+								[3.600000, 5.466484, [37, 39]],
+								[3.600000, 5.855021, [38, 40]],
+								[3.667241, 6.233868, [39, 41]],
+								[3.871073, 6.563395, [40, 42]],
+								[4.131631, 6.851275, [41, 43]],
+								[4.418298, 7.113423, [42, 44]],
+								[4.718964, 7.359471, [43, 45]],
+								[5.027502, 7.595604, [44, 46]],
+								[5.340145, 7.826294, [45, 47]],
+								[5.653924, 8.055432, [46, 48]],
+								[5.965763, 8.287198, [47, 49]],
+								[6.271238, 8.527254, [48, 50]],
+								[6.561268, 8.785595, [49, 51]],
+								[6.809273, 9.083733, [50, 52]],
+								[7.019023, 9.410709, [51, 53]],
+								[7.209851, 9.749111, [52, 54]],
+								[7.384580, 10.096107, [53, 55]],
+								[7.543856, 10.450462, [54, 56]],
+								[7.686906, 10.811672, [55, 57]],
+								[7.811539, 11.179626, [56, 58]],
+								[7.913685, 11.554419, [57, 59]],
+								[7.985906, 11.936045, [58, 60]],
+								[8.014225, 12.323225, [59, 61]],
+								[7.965885, 12.707726, [60, 62]],
+								[7.848588, 13.077860, [61, 63]],
+								[7.695796, 13.434996, [62, 64]],
+								[7.521100, 13.781996, [63, 65]],
+								[7.331071, 14.120863, [64, 66]],
+								[7.129294, 14.452883, [65, 67]],
+								[6.917761, 14.778776, [66, 68]],
+								[6.697406, 15.098772, [67, 69]],
+								[6.467890, 15.412254, [68, 70]],
+								[6.224123, 15.714687, [69]],
+							];
+		
+		var player_node_idx = 0; // player is currently being shown the image corresponding to node 0 in node array
+		var player_coords = [node_arr[player_node_idx][0], node_arr[player_node_idx][1]]; // x then y
+		
+		function getMovementVector(key) {
+			// On the XY plane, camera looks toward −Y when yaw=0
+			const forward = [ -Math.sin(yaw), -Math.cos(yaw) ];      // “w”
+			const right   = [ -Math.cos(yaw), Math.sin(yaw) ]; // “d”
+			switch(key) {
+				case 'w': return forward;
+				case 's': return forward.map(v => -v);
+				case 'd': return right;
+				case 'a': return right.map(v => -v);
+				default:  return [0,0];
+			}
+		}
+		
+		// 1) Track key‐down state
+		const moveState = { w: false, a: false, s: false, d: false };
+
+		['keydown','keyup'].forEach(type=>{
+			window.addEventListener(type, e => {
+				if (moveState[e.key] !== undefined) {
+					moveState[e.key] = (type === 'keydown');
+				}
+			});
+		});
+		
+		/**
+		 * @param M             movement vector [mx, my]
+		 * @param neighborList  array of neighbor-indices (i.e. node_arr[current][2])
+		 * @param maxAngleDeg   cone half‑angle in degrees
+		 * @returns index of the neighbor most aligned with M (or null)
+		 */
+		function chooseNextNodeByDirection(M, neighborList, maxAngleDeg = 70) {
+			// normalize M
+			const mLen = Math.hypot(M[0], M[1]) || 1;
+			const mN   = [ M[0]/mLen, M[1]/mLen ];
+
+			const cosCutoff = Math.cos(maxAngleDeg * Math.PI/180);
+			let bestIdx = null, bestDot = -Infinity;
+
+			neighborList.forEach(i => {
+				// pull x,y out of your [x, y, neighbors] tuple
+				const [nx, ny] = node_arr[i];
+				// direction from player to neighbor
+				const dx = nx - player_coords[0],
+							dy = ny - player_coords[1];
+				const dLen = Math.hypot(dx, dy) || 1;
+				const dot  = (dx/dLen)*mN[0] + (dy/dLen)*mN[1];
+
+				if (dot > cosCutoff && dot > bestDot) {
+					bestDot = dot;
+					bestIdx = i;
+				}
+			});
+
+			return bestIdx;
+		}
+		// 2) On each frame, if any movement key is down, attempt to move player
+		function updateMovement() {
+			const key = ['w','a','s','d'].find(k => moveState[k]);
+			if (!key) return;
+
+			const dir  = getMovementVector(key);
+			const next = chooseNextNodeByDirection(dir, node_arr[player_node_idx][2]);
+			if (next != null) {
+				const nextBitmap = imageMap[next];
+				const info = imageMap[next];
+				if (info) {
+					const first = false; // it’s never the very first upload here
+					uploadImageBitmap(info, first);
+					player_node_idx = next;
+					player_coords   = [node_arr[next][0], node_arr[next][1]];
+				}
+			}
+		}
+
+    const canvas = document.getElementById('glcanvas');
+    const gl = canvas.getContext('webgl2');
+		if (!gl) throw new Error("WebGL2 not supported");
+		
+		var imageMap = {};                  // now only holds { img: Image }
+		let loaded   = false;
+		let yaw      = Math.PI / 2, pitch = 0;
+
+		let tex      = gl.createTexture();    // 1 single texture
+		// Create & allocate the texture ONCE, immutable storage:
+		gl.bindTexture(gl.TEXTURE_2D, tex);
+		gl.bindTexture(gl.TEXTURE_2D, tex);
+		
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+		
+		// fetch + off‑main‑thread decode
+		async function loadImageBitmap(url) {
+			const resp = await fetch(url);
+			if (!resp.ok) throw new Error(`HTTP ${resp.status} loading ${url}`);
+			const blob = await resp.blob();
+			return await createImageBitmap(blob);
+		}
+
+		// mirror of your uploadImage but taking an ImageBitmap
+		function uploadImageBitmap(ib, isFirst = false) {
+			gl.bindTexture(gl.TEXTURE_2D, tex);
+			if (isFirst) {
+				gl.texImage2D(
+					gl.TEXTURE_2D, 0,
+					gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE,
+					ib
+				);
+			} else {
+				gl.texSubImage2D(
+					gl.TEXTURE_2D, 0,
+					0, 0, gl.RGBA, gl.UNSIGNED_BYTE,
+					ib
+				);
+			}
+		}
+		function preloadAll() {
+			for (let idx = 0; idx < node_arr.length; idx++) {
+				fetch(`/${idx}.jpg`)
+					.then(resp => {
+						if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+						return resp.blob();
+					})
+					.then(blob => createImageBitmap(blob))
+					.then(ib => {
+						imageMap[idx] = ib;
+						if (idx === player_node_idx && !loaded) {
+							uploadImageBitmap(ib, true);
+							loaded = true;
+						}
+					})
+					.catch(err => console.warn(`#${idx} failed:`, err));
+			}
+		}
+
+
+		
+
+    // Resize
+    function resize() {
+      canvas.width = innerWidth; canvas.height = innerHeight;
+      gl.viewport(0, 0, canvas.width, canvas.height);
+    }
+    window.onresize = resize; resize();
+
+    // Vertex Shader
+		const vsSrc = `
+			attribute vec2 aPosition;
+			varying vec2 vUV;
+			void main() {
+				vUV = aPosition * 0.5 + 0.5;
+				gl_Position = vec4(aPosition, 0.0, 1.0);
+			}
+		`;
+
+		// Fragment Shader
+		const fsSrc = `
+			precision mediump float;
+			varying vec2 vUV;
+			uniform sampler2D uTexture;
+			uniform vec2 uYawPitch;     // x = yaw, y = pitch
+			uniform vec2 uResolution;   // x = width, y = height
+			const float PI = 3.14159265359;
+
+			void main() {
+				// Convert UV to normalized device coordinates (NDC)
+				vec2 ndc = vUV * 2.0 - 1.0;
+
+				// Horizontal/vertical field of view
+				float fovX = radians(100.0);
+				float fovY = fovX * (uResolution.y / uResolution.x);
+
+				// Project screen to view space
+				float px = ndc.x * tan(fovX * 0.5);
+				float py = ndc.y * tan(fovY * 0.5);
+				vec3 rayDir = normalize(vec3(px, py, -1.0));
+
+				// Apply pitch rotation (around X axis)
+				float cosPitch = cos(uYawPitch.y), sinPitch = sin(uYawPitch.y);
+				rayDir = vec3(
+					rayDir.x,
+					cosPitch * rayDir.y - sinPitch * rayDir.z,
+					sinPitch * rayDir.y + cosPitch * rayDir.z
+				);
+
+				// Apply yaw rotation (around Y axis)
+				float cosYaw = cos(uYawPitch.x), sinYaw = sin(uYawPitch.x);
+				rayDir = vec3(
+					cosYaw * rayDir.x - sinYaw * rayDir.z,
+					rayDir.y,
+					sinYaw * rayDir.x + cosYaw * rayDir.z
+				);
+
+				// Convert to spherical coordinates
+				float lat = asin(clamp(rayDir.y, -1.0, 1.0));
+				float lon = abs(rayDir.y) > 0.99996 ? 0.0 : atan(rayDir.x, rayDir.z);
+
+				// Map spherical coordinates to texture UV
+				vec2 texCoord = vec2(1.0 - (lon / (2.0 * PI) + 0.5), 1.0 - (lat / PI + 0.5));
+
+				// Sample the panorama texture
+				gl_FragColor = texture2D(uTexture, texCoord);
+			}
+		`;
+
+
+    function compile(type, src){
+      const s = gl.createShader(type);
+      gl.shaderSource(s, src);
+      gl.compileShader(s);
+      return s;
+    }
+    const prog = gl.createProgram();
+    gl.attachShader(prog, compile(gl.VERTEX_SHADER, vsSrc));
+    gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, fsSrc));
+    gl.linkProgram(prog);
+    gl.useProgram(prog);
+
+    // Quad setup
+    const quad = new Float32Array([-1,-1, 1,-1, -1,1, 1,1]);
+    const vbuf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vbuf);
+    gl.bufferData(gl.ARRAY_BUFFER, quad, gl.STATIC_DRAW);
+    const aLoc = gl.getAttribLocation(prog, 'aPosition');
+    gl.enableVertexAttribArray(aLoc);
+    gl.vertexAttribPointer(aLoc, 2, gl.FLOAT, false, 0, 0);
+
+    // Uniforms
+    const uYawPitch = gl.getUniformLocation(prog, 'uYawPitch');
+		const uResolution = gl.getUniformLocation(prog, 'uResolution');
+		const uTexture = gl.getUniformLocation(prog, 'uTexture');
+
+    // Pointer lock
+    canvas.onclick = () => canvas.requestPointerLock();
+    document.onpointerlockchange = () => {
+      if (document.pointerLockElement === canvas)
+        document.addEventListener('mousemove', onMove);
+      else
+        document.removeEventListener('mousemove', onMove);
+    };
+    function onMove(e){
+      const s = .002;
+      yaw   += e.movementX * s;
+      pitch -= e.movementY * s;
+			pitch = Math.min(Math.PI/2, pitch);
+      pitch = Math.max(-Math.PI/2, pitch);
+	  
+			// ---- view-direction logging ----
+			const dx =  -Math.cos(pitch) * Math.sin(yaw);
+			const dy =  -Math.cos(pitch) * Math.cos(yaw);
+			const dz =  Math.sin(pitch)
+			console.log(`View Dir: [${dx.toFixed(3)}, ${dy.toFixed(3)}, ${dz.toFixed(3)}]`);
+    }
+
+    gl.clearColor(0, 0, 0, 1);
+		const targetFPS = 24; // Change to 15, 24, etc. if needed
+		const frameInterval = 1000 / targetFPS;
+
+		let lastTime = 0;
+
+		function draw(now) {
+			requestAnimationFrame(draw);
+
+			if (now - lastTime < frameInterval) return;
+			lastTime = now;
+
+			updateMovement();
+			if (loaded) {
+				gl.clear(gl.COLOR_BUFFER_BIT);
+				gl.activeTexture(gl.TEXTURE0);
+				gl.bindTexture(gl.TEXTURE_2D, tex);
+				gl.uniform1i(uTexture, 0);
+				gl.uniform2f(uResolution, canvas.width, canvas.height);
+				gl.uniform2f(uYawPitch, yaw, pitch);
+				gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+			}
+		}
+		
+		preloadAll();
+		requestAnimationFrame(draw);
+
+		
+  </script>
+</body>
+</html>
