@@ -206,23 +206,24 @@
 			}
 		}
 		function preloadAll() {
-			for (let idx = 0; idx < node_arr.length; idx++) {
-				fetch(`/${idx}.jpg`)
-					.then(resp => {
-						if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-						return resp.blob();
-					})
-					.then(blob => createImageBitmap(blob))
-					.then(ib => {
-						imageMap[idx] = ib;
-						if (idx === player_node_idx && !loaded) {
-							uploadImageBitmap(ib, true);
-							loaded = true;
-						}
-					})
-					.catch(err => console.warn(`#${idx} failed:`, err));
-			}
+		  for (let idx = 0; idx < node_arr.length; idx++) {
+		    fetch(`textures/${idx}.jpg`)
+		      .then(resp => {
+		        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+		        return resp.blob();
+		      })
+		      .then(blob => createImageBitmap(blob))
+		      .then(ib => {
+		        imageMap[idx] = ib;
+		        if (idx === player_node_idx && !loaded) {
+		          uploadImageBitmap(ib, true);
+		          loaded = true;
+		        }
+		      })
+		      .catch(err => console.warn(`#${idx} failed:`, err));
+		  }
 		}
+
 
 
 		
