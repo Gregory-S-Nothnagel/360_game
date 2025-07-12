@@ -4,13 +4,50 @@
   <meta charset="UTF-8">
   <title>360° Viewer</title>
   <style>
-    body, html { margin:0; overflow:hidden; background:#000 }
-    canvas { width:100vw; height:100vh; display:block; cursor:crosshair }
+    body, html { background:#000; }
+    #glcanvas {
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 100vw;
+			height: 100vh;
+		}
+		#joystick-zone {
+			position: absolute;
+			bottom: 40px; left: 40px;
+			width: 150px; height: 150px;
+			touch-action: none; /* very important for touch */
+		}
   </style>
 </head>
 <body>
+	
 	<canvas id="glcanvas"></canvas>
-  <script>
+	<div id="joystick-zone"></div>
+	<script src="https://unpkg.com/nipplejs@0.10.1/dist/nipplejs.js"></script>
+	<script>
+		let currentVec = { x: 0, y: 0 }
+		const manager = nipplejs.create({
+			zone: document.getElementById('joystick-zone'),
+			mode: 'static',        // fixed in place
+			position: { left: '50%', top: '50%' }, 
+			color: 'white',
+			size: 150
+		});
+
+		manager.on('start', () => console.log('joystick down'));
+		manager.on('move', (_, data) => {
+			currentVec.x = data.vector.x
+			currentVec.y = data.vector.y
+			console.log(currentVec)
+		})
+
+		manager.on('end', () => {
+			currentVec.x = 0
+			currentVec.y = 0
+		})
+
+		
 		const node_arr = 	[
 								[-0.000001, -8.000000, [1]],
 								[-0.000001, -7.611457, [0, 2]],
@@ -88,30 +125,6 @@
 		var player_node_idx = 0; // player is currently being shown the image corresponding to node 0 in node array
 		var player_coords = [node_arr[player_node_idx][0], node_arr[player_node_idx][1]]; // x then y
 		
-		function getMovementVector(key) {
-			// On the XY plane, camera looks toward −Y when yaw=0
-			const forward = [ -Math.sin(yaw), -Math.cos(yaw) ];      // “w”
-			const right   = [ -Math.cos(yaw), Math.sin(yaw) ]; // “d”
-			switch(key) {
-				case 'w': return forward;
-				case 's': return forward.map(v => -v);
-				case 'd': return right;
-				case 'a': return right.map(v => -v);
-				default:  return [0,0];
-			}
-		}
-		
-		// 1) Track key‐down state
-		const moveState = { w: false, a: false, s: false, d: false };
-
-		['keydown','keyup'].forEach(type=>{
-			window.addEventListener(type, e => {
-				if (moveState[e.key] !== undefined) {
-					moveState[e.key] = (type === 'keydown');
-				}
-			});
-		});
-		
 		/**
 		 * @param M             movement vector [mx, my]
 		 * @param neighborList  array of neighbor-indices (i.e. node_arr[current][2])
@@ -144,21 +157,19 @@
 			return bestIdx;
 		}
 		// 2) On each frame, if any movement key is down, attempt to move player
-		function updateMovement() {
-			const key = ['w','a','s','d'].find(k => moveState[k]);
-			if (!key) return;
-
-			const dir  = getMovementVector(key);
-			const next = chooseNextNodeByDirection(dir, node_arr[player_node_idx][2]);
+		function moveByJoystick() {
+			let dx = currentVec.x;
+			let dy = currentVec.y;
+			// Normalize to -1..1 range
+			const mag = Math.hypot(dx, dy);
+			if (!mag) return; // dead zone
+			const mN = [dx/mag, dy/mag];
+			const neighbors = node_arr[player_node_idx][2];
+			const next = chooseNextNodeByDirection(mN, neighbors);
 			if (next != null) {
-				const nextBitmap = imageMap[next];
-				const info = imageMap[next];
-				if (info) {
-					const first = false; // it’s never the very first upload here
-					uploadImageBitmap(info, first);
-					player_node_idx = next;
-					player_coords   = [node_arr[next][0], node_arr[next][1]];
-				}
+				uploadImageBitmap(imageMap[next], false);
+				player_node_idx = next;
+				player_coords = [node_arr[next][0], node_arr[next][1]];
 			}
 		}
 
@@ -224,9 +235,6 @@
 		  }
 		}
 
-
-
-		
 
     // Resize
     function resize() {
@@ -356,7 +364,8 @@
 			if (now - lastTime < frameInterval) return;
 			lastTime = now;
 
-			updateMovement();
+			moveByJoystick();
+
 			if (loaded) {
 				gl.clear(gl.COLOR_BUFFER_BIT);
 				gl.activeTexture(gl.TEXTURE0);
@@ -367,6 +376,9 @@
 				gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 			}
 		}
+		
+		console.log(manager); // Check if it's undefined
+		console.log(manager?.joysticks); // Should be an array
 		
 		preloadAll();
 		requestAnimationFrame(draw);
