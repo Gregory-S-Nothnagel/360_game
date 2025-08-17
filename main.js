@@ -27,9 +27,9 @@ setupFOV(gl, program, canvas);
 
 // build two players:
 const players = [
-  new VideoNodePlayer(gl, program, canvas, nodeArr0, ['/0.mp4', '/0b.mp4'], [2, 1], [], []),
-  new VideoNodePlayer(gl, program, canvas, nodeArr1, ['/1.mp4', '/1b.mp4', './3.mp4'], [], [0], [99]),
-  new VideoNodePlayer(gl, program, canvas, nodeArr2, ['/2.mp4', '/2b.mp4'], [], [0], []),
+  new VideoNodePlayer(gl, program, canvas, nodeArr0, ['./0.mp4', './0b.mp4'], [2, 1], [], []),
+  new VideoNodePlayer(gl, program, canvas, nodeArr1, ['./1.mp4', './1b.mp4', './3.mp4'], [], [0], [99]),
+  new VideoNodePlayer(gl, program, canvas, nodeArr2, ['./2.mp4', './2b.mp4'], [], [0], []),
 ];
 
 initWASD(canvas, program, gl, players);
