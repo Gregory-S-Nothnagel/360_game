@@ -183,7 +183,7 @@ function render() {
 
 
     if (!keyState.KeyW && !keyState.KeyA && !keyState.KeyS && !keyState.KeyD) { // user stopped
-      setPlaying(active.video[backwards], active, backwards, false);
+      if (!active.video[backwards].paused) setPlaying(active.video[backwards], active, backwards, false);
     }
     else if (active.frameIndex === active.nodeArr.length - 1) { // last node in a sequence
       console.log("bestVideo: ", bestVideo, "activeIdx: ", activeIdx, "bestFrame", bestFrame, active.nodeArr[bestFrame][0], active.nodeArr[bestFrame][1]);
@@ -279,3 +279,4 @@ function render() {
 }
 
 requestAnimationFrame(render);
+
